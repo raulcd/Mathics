@@ -26,8 +26,10 @@ from itertools import chain
 
 from mathics.version import __version__  # noqa used in loading to check consistency.
 
+from mathics_scanner.errors import IncompleteSyntaxError
 from mathics_scanner import TranslateError
-from mathics.core.parser import MathicsFileLineFeeder
+from mathics.core.parser import MathicsFileLineFeeder, MathicsMultiLineFeeder, parse
+
 
 from mathics.core.expression import (
     BoxError,
@@ -736,7 +738,6 @@ class Read(Builtin):
                 "Record",
                 "String",
                 "Word",
-                "Expression",
             ]
         ]
 
@@ -771,7 +772,9 @@ class Read(Builtin):
                     if tmp == "":
                         if word == "":
                             raise EOFError
-                        yield word
+                        last_word = word
+                        word = ""
+                        yield last_word
 
                     if tmp in word_separators:
                         if word == "":
@@ -799,6 +802,7 @@ class Read(Builtin):
             ["+", "-", ".", "e", "E", "^", "*"] + [str(i) for i in range(10)],
         )
         for typ in types.leaves:
+            print("reading", typ)
             try:
                 if typ == Symbol("Byte"):
                     tmp = stream.read(1)
@@ -812,13 +816,30 @@ class Read(Builtin):
                     result.append(tmp)
                 elif typ == Symbol("Expression"):
                     tmp = next(read_record)
-                    expr = evaluation.parse(tmp)
-                    if expr is None:
-                        evaluation.message(
-                            "Read", "readt", tmp, Expression("InputSteam", name, n)
-                        )
-                        return SymbolFailed
-                    result.append(Expression("Hold", expr))
+                    print("start with=", tmp)
+                    while True:
+                        try:
+                            print("tmp=",tmp)
+                            feeder = MathicsMultiLineFeeder(tmp)
+                            expr = parse(evaluation.definitions, feeder)
+                            print("expr=",expr)
+                            break
+                        except IncompleteSyntaxError:
+                            print("looking for the next line")
+                            try:
+                                nextline = next(read_record)
+                            except EOFError:
+                                expr = Symbol("EndOfFile")
+                                break
+                            tmp = tmp + "\n" + nextline                        
+                    # if expr is None:
+                    #    evaluation.message(
+                    #        "Read", "readt", tmp, Expression("InputSteam", name, n)
+                    #    )
+                    #    return SymbolFailed
+                    print("expre=", expr)
+                    if expr is not None:
+                        result.append(Expression("Hold", expr))
                 elif typ == Symbol("Number"):
                     tmp = next(read_number)
                     try:
@@ -2190,8 +2211,6 @@ class Get(PrefixOperator):
 
     def apply(self, path, evaluation, options):
         "Get[path_String, OptionsPattern[Get]]"
-        from mathics.core.parser import parse
-
         def check_options(options):
             # Options
             # TODO Proper error messages

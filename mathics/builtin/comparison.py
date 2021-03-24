@@ -230,7 +230,7 @@ class _EqualityOperator(_InequalityOperator):
         elif l1 == SymbolFalse and l2 == SymbolTrue:
             return False
         elif isinstance(l1, String) and isinstance(l2, String):
-            return l1.value == l2.value
+            return False  # Otherwise, `l1.same(l2)` would returned `SymbolTrue`.
         elif l1.has_form("List", None) and l2.has_form("List", None):
             if len(l1.leaves) != len(l2.leaves):
                 return False
@@ -240,6 +240,7 @@ class _EqualityOperator(_InequalityOperator):
                     return result
             return True
 
+        
         # Use Mathics' built-in comparisons for Real and Integer. These use
         # WL's interpretation of Equal[] which allows for slop in Reals
         # in the least significant digit of precision, while for Integers, comparison
@@ -250,8 +251,14 @@ class _EqualityOperator(_InequalityOperator):
         ):
             return l1 == l2
 
-        # For everything else, use sympy.
+        # If one of l1 or l2 is a string, and not the other
+        # then we do not know if they are equal.
+        # This avoid failings trying to convert strings to
+        # numbers.
+        if isinstance(l1, String) or isinstance(l2, String):
+            return None
 
+        # For everything else, use sympy.
         l1_sympy = l1.to_sympy(evaluate=True, prec=COMPARE_PREC)
         l2_sympy = l2.to_sympy(evaluate=True, prec=COMPARE_PREC)
 
@@ -279,10 +286,10 @@ class _EqualityOperator(_InequalityOperator):
         if n <= 1:
             return SymbolTrue
         is_exact_vals = [
-            Expression("ExactNumberQ", arg).evaluate(evaluation)
+            Expression("ExactNumberQ", arg).evaluate(evaluation) == SymbolTrue
             for arg in items_sequence
         ]
-        if not all(val == SymbolTrue for val in is_exact_vals):
+        if not all(is_exact_vals):            
             return self.apply_other(items, evaluation)
         # Now we know that all are exact numbers.
         args = self.numerify_args(items, evaluation)
@@ -290,7 +297,7 @@ class _EqualityOperator(_InequalityOperator):
         args2 = args[1:] + (args[0],)
         for x, y in zip(args, args2):
             # if isinstance(x, String) or isinstance(y, String):
-            #    if not (isinstance(x, String) and isinstance(y, String)):
+            #   if not (isinstance(x, String) and isinstance(y, String)):
             #        c = 1
             #    else:
             #        c = cmp(x.get_string_value(), y.get_string_value())
