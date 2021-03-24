@@ -3,7 +3,7 @@
 
 from mathics.version import __version__  # noqa used in loading to check consistency.
 
-import itertools
+
 from typing import Optional, Union
 
 import sympy
@@ -12,7 +12,7 @@ from mathics.builtin.base import (
     BinaryOperator,
     Builtin,
     SympyFunction,
-    )
+)
 
 from mathics.builtin.constants import mp_convert_constant
 
@@ -29,12 +29,15 @@ from mathics.core.expression import (
 )
 from mathics.core.numbers import dps
 
+
 def cmp(a, b) -> int:
     "Returns 0 if a == b, -1 if a < b and 1 if a > b"
     return (a > b) - (a < b)
 
+
 def is_number(sympy_value) -> bool:
     return hasattr(sympy_value, "is_number") or isinstance(sympy_value, sympy.Float)
+
 
 class SameQ(BinaryOperator):
     """
@@ -210,9 +213,11 @@ class _InequalityOperator(BinaryOperator):
             items = items.numerify(evaluation).get_sequence()
         return items
 
+
 # Imperical number that seems to work.
 # We have to be able to match mpmath values with sympy values
 COMPARE_PREC = 50
+
 
 class _EqualityOperator(_InequalityOperator):
     "Compares all pairs e.g. a == b == c compares a == b, b == c, and a == c."
@@ -240,9 +245,10 @@ class _EqualityOperator(_InequalityOperator):
         # in the least significant digit of precision, while for Integers, comparison
         # has to be exact.
 
-        if ((isinstance(l1, Real) and isinstance(l2, Real)) or
-            (isinstance(l1, Integer) and isinstance(l2, Integer))):
-                return l1 == l2
+        if (isinstance(l1, Real) and isinstance(l2, Real)) or (
+            isinstance(l1, Integer) and isinstance(l2, Integer)
+        ):
+            return l1 == l2
 
         # For everything else, use sympy.
 
@@ -252,12 +258,10 @@ class _EqualityOperator(_InequalityOperator):
         if l1_sympy is None or l2_sympy is None:
             return None
 
-
         if not is_number(l1_sympy):
             l1_sympy = mp_convert_constant(l1_sympy, prec=COMPARE_PREC)
         if not is_number(l2_sympy):
             l2_sympy = mp_convert_constant(l2_sympy, prec=COMPARE_PREC)
-
 
         if l1_sympy.is_number and l2_sympy.is_number:
             # assert min_prec(l1, l2) is None
@@ -274,19 +278,25 @@ class _EqualityOperator(_InequalityOperator):
         n = len(items_sequence)
         if n <= 1:
             return SymbolTrue
-        is_exact_vals = [Expression("ExactNumberQ", arg).evaluate(evaluation) for arg in items_sequence]
-        if all(val == SymbolTrue for val in is_exact_vals):
+        is_exact_vals = [
+            Expression("ExactNumberQ", arg).evaluate(evaluation)
+            for arg in items_sequence
+        ]
+        if not all(val == SymbolTrue for val in is_exact_vals):
             return self.apply_other(items, evaluation)
+        # Now we know that all are exact numbers.
         args = self.numerify_args(items, evaluation)
         wanted = operators[self.get_name()]
-        for x, y in itertools.combinations(args, 2):
-            if isinstance(x, String) or isinstance(y, String):
-                if not (isinstance(x, String) and isinstance(y, String)):
-                    c = 1
-                else:
-                    c = cmp(x.get_string_value(), y.get_string_value())
-            else:
-                c = do_cmp(x, y)
+        args2 = args[1:] + (args[0],)
+        for x, y in zip(args, args2):
+            # if isinstance(x, String) or isinstance(y, String):
+            #    if not (isinstance(x, String) and isinstance(y, String)):
+            #        c = 1
+            #    else:
+            #        c = cmp(x.get_string_value(), y.get_string_value())
+            # else:
+            #    c = do_cmp(x, y)
+            c = do_cmp(x, y)
             if c is None:
                 return
             elif c not in wanted:
@@ -297,14 +307,14 @@ class _EqualityOperator(_InequalityOperator):
     def apply_other(self, args, evaluation):
         "%(name)s[args___?(!ExactNumberQ[#]&)]"
         args = args.get_sequence()
-        for x, y in itertools.combinations(args, 2):
+        args2 = args[1:] + (args[0],)
+        for x, y in zip(args, args2):
             c = self.do_compare(x, y)
             if c is None:
                 return
             if self._op(c) is False:
                 return SymbolFalse
         return SymbolTrue
-
 
 
 class _ComparisonOperator(_InequalityOperator):
@@ -377,6 +387,7 @@ class Inequality(Builtin):
             ]
             return Expression("And", *groups)
 
+
 def do_cmp(x1, x2) -> Optional[int]:
 
     # don't attempt to compare complex numbers
@@ -389,7 +400,7 @@ def do_cmp(x1, x2) -> Optional[int]:
 
     s1 = x1.to_sympy()
     s2 = x2.to_sympy()
-    
+
     if s1 is None:
         print("x1=", x1, "could not be converted to sympy")
         if s2 is None:
@@ -399,7 +410,7 @@ def do_cmp(x1, x2) -> Optional[int]:
             return False
     if s2 is None:
         print("x2=", x2, "could not be converted to sympy")
-    
+
     # Use internal comparisons only for Real which is uses
     # WL's interpretation of equal (which allows for slop
     # in the least significant digit of precision), and use

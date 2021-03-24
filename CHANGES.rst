@@ -25,12 +25,16 @@ Enhancements
   ``Compiled[] and CompiledFunction[]``  every expression can have a compiled form,
   as a Python function.
 * ``EqualQ[]`` now compares complex against other numbers properly.
-
+* ``StringSplit`` now accepts list of strings as a first argument.
 
 Bug fixes
 +++++++++
 
 * TeXForm for integrals are now properly formatted.
+* Read now returns (Hold) Expressions when type is set to `Expression` (#1174).
+* Read also supports Hold around types (#1174).
+* a==b==c==d avoids to compare unnecesary pairs like a==a or a==c (#1197)
+* $Path now is an Unprotected variable.
 
 
 Pymathics Modules
