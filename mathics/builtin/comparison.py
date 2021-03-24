@@ -223,14 +223,22 @@ class _EqualityOperator(_InequalityOperator):
     "Compares all pairs e.g. a == b == c compares a == b, b == c, and a == c."
 
     def do_compare(self, l1, l2) -> Union[bool, None]:
-        if l1.same(l2):
+        are_the_same = l1.same(l2)
+        if are_the_same:
             return True
         elif l1 == SymbolTrue and l2 == SymbolFalse:
             return False
         elif l1 == SymbolFalse and l2 == SymbolTrue:
             return False
-        elif isinstance(l1, String) and isinstance(l2, String):
-            return False  # Otherwise, `l1.same(l2)` would returned `SymbolTrue`.
+        elif isinstance(l1, String):
+            if isinstance(l2, String):
+                # Otherwise, `l1.same(l2)`
+                # would returned `SymbolTrue`
+                return False
+            elif isinstance(l2, Number):
+                return False
+        elif isinstance(l2, String) and isinstance(l1, Number):
+            return False
         elif l1.has_form("List", None) and l2.has_form("List", None):
             if len(l1.leaves) != len(l2.leaves):
                 return False
@@ -240,7 +248,6 @@ class _EqualityOperator(_InequalityOperator):
                     return result
             return True
 
-        
         # Use Mathics' built-in comparisons for Real and Integer. These use
         # WL's interpretation of Equal[] which allows for slop in Reals
         # in the least significant digit of precision, while for Integers, comparison
@@ -255,7 +262,7 @@ class _EqualityOperator(_InequalityOperator):
         # then we do not know if they are equal.
         # This avoid failings trying to convert strings to
         # numbers.
-        if isinstance(l1, String) or isinstance(l2, String):
+        if not isinstance(l1, Expression) or isinstance(l2, Expression):
             return None
 
         # For everything else, use sympy.
@@ -316,7 +323,7 @@ class _EqualityOperator(_InequalityOperator):
         args = args.get_sequence()
         args2 = args[1:] + (args[0],)
         for x, y in zip(args, args2):
-            c = self.do_compare(x, y)
+            c = self.do_compare(x.evaluate(evaluation), y.evaluate(evaluation))
             if c is None:
                 return
             if self._op(c) is False:
@@ -396,8 +403,23 @@ class Inequality(Builtin):
 
 
 def do_cmp(x1, x2) -> Optional[int]:
-
     # don't attempt to compare complex numbers
+    if isinstance(x1, Complex):
+        if isinstance(x2, Complex):
+            recmp = do_cmp(x1.real, x2.real)
+            imcmp = do_cmp(x1.imag, x2.imag)
+            if recmp == imcmp == 0:
+                return 0
+        else:
+            if 0 == do_cmp(x1.imag, from_python(0)):
+                return do_cmp(x1.real, x2)
+    elif isinstance(x2, Complex):
+        if 0 == do_cmp(x2.imag, from_python(0)):
+            return do_cmp(x2.real, x1)
+
+        
+                
+    
     for x in (x1, x2):
         # TODO: Send message General::nord
         if isinstance(x, Complex) or (
@@ -409,14 +431,12 @@ def do_cmp(x1, x2) -> Optional[int]:
     s2 = x2.to_sympy()
 
     if s1 is None:
-        print("x1=", x1, "could not be converted to sympy")
         if s2 is None:
-            print("x2=", x2, "could not be converted to sympy")
             return None
         else:
             return False
     if s2 is None:
-        print("x2=", x2, "could not be converted to sympy")
+        return None
 
     # Use internal comparisons only for Real which is uses
     # WL's interpretation of equal (which allows for slop
