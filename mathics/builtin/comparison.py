@@ -225,7 +225,7 @@ class _EqualityOperator(_InequalityOperator):
         elif l1 == SymbolFalse and l2 == SymbolTrue:
             return False
         elif isinstance(l1, String) and isinstance(l2, String):
-            return False
+            return l1.value == l2.value
         elif l1.has_form("List", None) and l2.has_form("List", None):
             if len(l1.leaves) != len(l2.leaves):
                 return False
@@ -389,7 +389,17 @@ def do_cmp(x1, x2) -> Optional[int]:
 
     s1 = x1.to_sympy()
     s2 = x2.to_sympy()
-
+    
+    if s1 is None:
+        print("x1=", x1, "could not be converted to sympy")
+        if s2 is None:
+            print("x2=", x2, "could not be converted to sympy")
+            return None
+        else:
+            return False
+    if s2 is None:
+        print("x2=", x2, "could not be converted to sympy")
+    
     # Use internal comparisons only for Real which is uses
     # WL's interpretation of equal (which allows for slop
     # in the least significant digit of precision), and use
