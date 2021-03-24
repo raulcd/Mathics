@@ -392,7 +392,7 @@ class Path(Predefined):
      = ...
     """
 
-    attributes = "Protected"
+    attributes = ("Unprotected", )
     name = "$Path"
 
     def evaluate(self, evaluation):
