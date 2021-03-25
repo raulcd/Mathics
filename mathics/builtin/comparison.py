@@ -26,6 +26,7 @@ from mathics.core.expression import (
     Symbol,
     SymbolFalse,
     SymbolTrue,
+    from_python
 )
 from mathics.core.numbers import dps
 
@@ -303,6 +304,30 @@ class _EqualityOperator(_InequalityOperator):
         wanted = operators[self.get_name()]
         args2 = args[1:] + (args[0],)
         for x, y in zip(args, args2):
+            if isinstance(x, Complex):
+                if isinstance(y, Complex):
+                    if x != y:
+                        return SymbolFalse
+                    else:
+                        continue
+                else:
+                    if x.real == y and x.imag == from_python(0):
+                        continue
+                    else:
+                        return SymbolFalse
+            elif isinstance(y, Complex):
+                if y.real == x and y.imag == from_python(0):
+                    continue
+                else:
+                    return SymbolFalse
+            else:
+                c = do_cmp(x,y)
+                if c is None:
+                    return
+                elif c not in wanted:
+                    return SymbolFalse
+                assert c in wanted
+            # String can not reach this part of the code...    
             # if isinstance(x, String) or isinstance(y, String):
             #   if not (isinstance(x, String) and isinstance(y, String)):
             #        c = 1
@@ -310,12 +335,12 @@ class _EqualityOperator(_InequalityOperator):
             #        c = cmp(x.get_string_value(), y.get_string_value())
             # else:
             #    c = do_cmp(x, y)
-            c = do_cmp(x, y)
-            if c is None:
-                return
-            elif c not in wanted:
-                return SymbolFalse
-            assert c in wanted
+            # c = do_cmp(x, y)
+            # if c is None:
+            #    return
+            # elif c not in wanted:
+            #    return SymbolFalse
+            # assert c in wanted
         return SymbolTrue
 
     def apply_other(self, args, evaluation):
@@ -413,13 +438,14 @@ def do_cmp(x1, x2) -> Optional[int]:
         else:
             if 0 == do_cmp(x1.imag, from_python(0)):
                 return do_cmp(x1.real, x2)
+            else:            
+                return None
     elif isinstance(x2, Complex):
         if 0 == do_cmp(x2.imag, from_python(0)):
             return do_cmp(x2.real, x1)
+        else:
+            return None
 
-        
-                
-    
     for x in (x1, x2):
         # TODO: Send message General::nord
         if isinstance(x, Complex) or (

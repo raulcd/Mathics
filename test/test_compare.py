@@ -4,6 +4,18 @@ from .helper import check_evaluation
 def test_compare():
     for str_expr, str_expected in (
         (
+            '"4" == 4',
+            "False",
+        ),
+        (
+            '4 == "4"',
+            "False",
+        ),
+        (
+            'a == "4"',
+            'a == "4"',
+        ),            
+        (
             "I == I",
             "True",
         ),
