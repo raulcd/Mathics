@@ -223,9 +223,8 @@ COMPARE_PREC = 50
 class _EqualityOperator(_InequalityOperator):
     "Compares all pairs e.g. a == b == c compares a == b, b == c, and a == c."
 
-    def do_compare(self, l1, l2) -> Union[bool, None]:
-        are_the_same = l1.same(l2)
-        if are_the_same:
+    def do_compare(self, l1, l2) -> Union[bool, None]: 
+        if l1.same(l2):
             return True
         elif l1 == SymbolTrue and l2 == SymbolFalse:
             return False

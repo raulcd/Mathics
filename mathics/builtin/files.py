@@ -725,7 +725,7 @@ class Read(Builtin):
                     leaves.append(leaf._leaves[0])
                 else:
                     leaves.append(leaf)
-            types = Expression("List", *types)
+            types = Expression("List", *leaves)
 
         READ_TYPES = [
             Symbol(k)
@@ -802,7 +802,6 @@ class Read(Builtin):
             ["+", "-", ".", "e", "E", "^", "*"] + [str(i) for i in range(10)],
         )
         for typ in types.leaves:
-            print("reading", typ)
             try:
                 if typ == Symbol("Byte"):
                     tmp = stream.read(1)
@@ -816,28 +815,23 @@ class Read(Builtin):
                     result.append(tmp)
                 elif typ == Symbol("Expression"):
                     tmp = next(read_record)
-                    print("start with=", tmp)
                     while True:
                         try:
-                            print("tmp=",tmp)
                             feeder = MathicsMultiLineFeeder(tmp)
                             expr = parse(evaluation.definitions, feeder)
-                            print("expr=",expr)
                             break
                         except IncompleteSyntaxError:
-                            print("looking for the next line")
                             try:
                                 nextline = next(read_record)
                             except EOFError:
                                 expr = Symbol("EndOfFile")
                                 break
-                            tmp = tmp + "\n" + nextline                        
+                            tmp = tmp + "\n" + nextline
                     # if expr is None:
                     #    evaluation.message(
                     #        "Read", "readt", tmp, Expression("InputSteam", name, n)
                     #    )
                     #    return SymbolFailed
-                    print("expre=", expr)
                     if expr is not None:
                         result.append(Expression("Hold", expr))
                 elif typ == Symbol("Number"):
@@ -2211,6 +2205,7 @@ class Get(PrefixOperator):
 
     def apply(self, path, evaluation, options):
         "Get[path_String, OptionsPattern[Get]]"
+
         def check_options(options):
             # Options
             # TODO Proper error messages
